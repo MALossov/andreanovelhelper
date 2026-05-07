@@ -149,80 +149,87 @@ jobs:
           name: ${{ matrix.target }}-vsix
           path: dist/*.vsix
 
-  build-linux:
-    name: Build ${{ matrix.target }}
-    needs: webview
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - target: linux-x64
-            platform: linux
-            arch: x64
-            build_target: ""
-            linker_env: ""
-            linker_value: ""
-          - target: linux-arm64
-            platform: linux
-            arch: arm64
-            build_target: aarch64-unknown-linux-gnu
-            linker_env: CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER
-            linker_value: aarch64-linux-gnu-gcc
-          - target: linux-armhf
-            platform: linux
-            arch: arm
-            build_target: arm-unknown-linux-gnueabihf
-            linker_env: CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER
-            linker_value: arm-linux-gnueabihf-gcc
-    runs-on: ubuntu-latest
-    container:
-      image: debian:bookworm
-    env:
-      EV: ${{ inputs.electron_version || '30.0.9' }}
+build-linux:
+  name: Build ${{ matrix.target }}
+  needs: webview
+  strategy:
+    fail-fast: false
+    matrix:
+      include:
+        - target: linux-x64
+          platform: linux
+          arch: x64
+          build_target: ""
+          linker_env: ""
+          linker_value: ""
+        - target: linux-arm64
+          platform: linux
+          arch: arm64
+          build_target: aarch64-unknown-linux-gnu
+          linker_env: CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER
+          linker_value: aarch64-linux-gnu-gcc
+        - target: linux-armhf
+          platform: linux
+          arch: arm
+          build_target: arm-unknown-linux-gnueabihf
+          linker_env: CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER
+          linker_value: arm-linux-gnueabihf-gcc
 
-    steps:
-      - name: Install OS deps
-        run: |
-          set -e
-          echo 'deb http://archive.debian.org/debian bookworm main' > /etc/apt/sources.list
-          echo 'deb http://archive.debian.org/debian-security bookworm/updates main' >> /etc/apt/sources.list
-          echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99disable-check-valid-until
-          apt-get -o Acquire::AllowInsecureRepositories=true update
-          apt-get install -y --no-install-recommends git curl python3 make g++ ca-certificates pkg-config
-          if [ '${{ matrix.arch }}' = 'arm64' ]; then
-            apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-          elif [ '${{ matrix.arch }}' = 'arm' ]; then
-            apt-get install -y --no-install-recommends gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
-          fi
+  runs-on: ubuntu-latest
 
-      - uses: actions/checkout@v4
+  container:
+    image: debian:bookworm
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: package-lock.json
+  env:
+    EV: ${{ inputs.electron_version || '30.0.9' }}
 
-      - name: Cache Rust dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            packages/enigo-keyboard/target
-          key: linux-buster-${{ matrix.target }}-cargo-${{ hashFiles('packages/enigo-keyboard/Cargo.lock') }}
-          restore-keys: |
-            linux-buster-${{ matrix.target }}-cargo-
+  steps:
+    - name: Install OS deps
+      run: |
+        set -e
+        apt-get update
+        apt-get install -y --no-install-recommends \
+          git curl python3 make g++ ca-certificates pkg-config
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        if [ '${{ matrix.arch }}' = 'arm64' ]; then
+          apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+        elif [ '${{ matrix.arch }}' = 'arm' ]; then
+          apt-get install -y --no-install-recommends gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
+        fi
 
-      - name: Add Rust cross target
-        if: matrix.build_target != ''
-        run: rustup target add '${{ matrix.build_target }}'
+    - uses: actions/checkout@v4
 
-      - name: Install deps
-        run: npm ci
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: npm
+        cache-dependency-path: package-lock.json
+
+    - name: Cache Rust dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          packages/enigo-keyboard/target
+        key: linux-bookworm-${{ matrix.target }}-cargo-${{ hashFiles('packages/enigo-keyboard/Cargo.lock') }}
+        restore-keys: |
+          linux-bookworm-${{ matrix.target }}-cargo-
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Add Rust cross target
+      if: matrix.build_target != ''
+      run: rustup target add '${{ matrix.build_target }}'
+
+    - name: Install deps
+      run: |
+        set -e
+        python3 --version
+        node -v
+        npm -v
+        npm_config_python="$(command -v python3)" npm ci
 
       - name: Download webview dist
         uses: actions/download-artifact@v4
