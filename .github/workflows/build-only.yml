@@ -176,7 +176,7 @@ jobs:
             linker_value: arm-linux-gnueabihf-gcc
     runs-on: ubuntu-latest
     container:
-      image: debian:buster
+      image: debian:bookworm
     env:
       EV: ${{ inputs.electron_version || '30.0.9' }}
 
@@ -184,8 +184,8 @@ jobs:
       - name: Install OS deps
         run: |
           set -e
-          echo 'deb http://archive.debian.org/debian buster main' > /etc/apt/sources.list
-          echo 'deb http://archive.debian.org/debian-security buster/updates main' >> /etc/apt/sources.list
+          echo 'deb http://archive.debian.org/debian bookworm main' > /etc/apt/sources.list
+          echo 'deb http://archive.debian.org/debian-security bookworm/updates main' >> /etc/apt/sources.list
           echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99disable-check-valid-until
           apt-get -o Acquire::AllowInsecureRepositories=true update
           apt-get install -y --no-install-recommends git curl python3 make g++ ca-certificates pkg-config
