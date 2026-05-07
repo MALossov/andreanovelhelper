@@ -180,6 +180,10 @@ jobs:
     container:
       image: debian:bookworm
 
+    defaults:
+      run:
+        shell: bash
+
     env:
       EV: ${{ inputs.electron_version || '30.0.9' }}
 
@@ -189,7 +193,7 @@ jobs:
           set -e
           apt-get update
           apt-get install -y --no-install-recommends \
-            git curl python3 make g++ ca-certificates pkg-config
+            git curl python3 make g++ ca-certificates pkg-config bash
 
           if [ '${{ matrix.arch }}' = 'arm64' ]; then
             apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
@@ -258,6 +262,7 @@ jobs:
             --arch='${{ matrix.arch }}'
 
       - name: Package STD variant
+        shell: bash
         run: |
           set -euo pipefail
           mkdir -p dist
