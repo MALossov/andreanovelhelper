@@ -231,64 +231,64 @@ build-linux:
         npm -v
         npm_config_python="$(command -v python3)" npm ci
 
-      - name: Download webview dist
-        uses: actions/download-artifact@v4
-        with:
-          name: webview-dist
-          path: packages/webview/dist
+    - name: Download webview dist
+      uses: actions/download-artifact@v4
+      with:
+        name: webview-dist
+        path: packages/webview/dist
 
-      - name: Build native enigo-keyboard
-        working-directory: packages/enigo-keyboard
-        env:
-          BUILD_TARGET: ${{ matrix.build_target }}
-          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.target == 'linux-arm64' && matrix.linker_value || '' }}
-          CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER: ${{ matrix.target == 'linux-armhf' && matrix.linker_value || '' }}
-        run: npm run build:ci
+    - name: Build native enigo-keyboard
+      working-directory: packages/enigo-keyboard
+      env:
+        BUILD_TARGET: ${{ matrix.build_target }}
+        CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.target == 'linux-arm64' && matrix.linker_value || '' }}
+        CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER: ${{ matrix.target == 'linux-armhf' && matrix.linker_value || '' }}
+      run: npm run build:ci
 
-      - name: Compile extension
-        run: npm run compile
+    - name: Compile extension
+      run: npm run compile
 
-      - name: Rebuild @vscode/sqlite3 for Electron
-        run: |
-          npm rebuild @vscode/sqlite3 \
-            --runtime=electron \
-            --target="$EV" \
-            --dist-url=https://electronjs.org/headers \
-            --platform='${{ matrix.platform }}' \
-            --arch='${{ matrix.arch }}'
+    - name: Rebuild @vscode/sqlite3 for Electron
+      run: |
+        npm rebuild @vscode/sqlite3 \
+          --runtime=electron \
+          --target="$EV" \
+          --dist-url=https://electronjs.org/headers \
+          --platform='${{ matrix.platform }}' \
+          --arch='${{ matrix.arch }}'
 
-      - name: Package STD variant
-        run: |
-          set -euo pipefail
-          mkdir -p dist
-          node -e '
-            const fs=require("fs");
-            const pkg=JSON.parse(fs.readFileSync("package.json","utf8"));
-            pkg.activationEvents=(pkg.activationEvents||[]).filter(x=>x!=="onStartupFinished");
-            if(pkg.scripts&&pkg.scripts["vscode:prepublish"]) pkg.scripts["vscode:prepublish"]="npm run compile";
-            fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2));
-          '
-          npx vsce package --target '${{ matrix.target }}' --out 'dist/anh-std-${{ matrix.target }}.vsix'
+    - name: Package STD variant
+      run: |
+        set -euo pipefail
+        mkdir -p dist
+        node -e '
+          const fs=require("fs");
+          const pkg=JSON.parse(fs.readFileSync("package.json","utf8"));
+          pkg.activationEvents=(pkg.activationEvents||[]).filter(x=>x!=="onStartupFinished");
+          if(pkg.scripts&&pkg.scripts["vscode:prepublish"]) pkg.scripts["vscode:prepublish"]="npm run compile";
+          fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2));
+        '
+        npx vsce package --target '${{ matrix.target }}' --out 'dist/anh-std-${{ matrix.target }}.vsix'
 
-      - name: Package EXP variant
-        run: |
-          set -euo pipefail
-          node -e '
-            const fs=require("fs");
-            const pkg=JSON.parse(fs.readFileSync("package.json","utf8"));
-            const evs=new Set(pkg.activationEvents||[]);
-            evs.add("onStartupFinished");
-            pkg.activationEvents=[...evs];
-            const parts=pkg.version.split(".").map(Number);
-            if(parts.length!==3||parts.some(Number.isNaN)) throw new Error("Invalid semver: "+pkg.version);
-            parts[2]+=1;
-            pkg.version=parts.join(".");
-            if(pkg.scripts&&pkg.scripts["vscode:prepublish"]) pkg.scripts["vscode:prepublish"]="npm run compile";
-            fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2));
-          '
-          npx vsce package --target '${{ matrix.target }}' --pre-release --out 'dist/anh-exp-${{ matrix.target }}.vsix'
+    - name: Package EXP variant
+      run: |
+        set -euo pipefail
+        node -e '
+          const fs=require("fs");
+          const pkg=JSON.parse(fs.readFileSync("package.json","utf8"));
+          const evs=new Set(pkg.activationEvents||[]);
+          evs.add("onStartupFinished");
+          pkg.activationEvents=[...evs];
+          const parts=pkg.version.split(".").map(Number);
+          if(parts.length!==3||parts.some(Number.isNaN)) throw new Error("Invalid semver: "+pkg.version);
+          parts[2]+=1;
+          pkg.version=parts.join(".");
+          if(pkg.scripts&&pkg.scripts["vscode:prepublish"]) pkg.scripts["vscode:prepublish"]="npm run compile";
+          fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2));
+        '
+        npx vsce package --target '${{ matrix.target }}' --pre-release --out 'dist/anh-exp-${{ matrix.target }}.vsix'
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.target }}-vsix
-          path: dist/*.vsix
+    - uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.target }}-vsix
+        path: dist/*.vsix
